@@ -1,0 +1,687 @@
+basePath: /
+definitions:
+  model.ClientResponse:
+    description: Client information response
+    properties:
+      api_key:
+        description: API key (only shown on registration)
+        example: sk_live_abcdef123456
+        type: string
+      client_id:
+        description: Human-readable client ID
+        example: client_abc12345
+        type: string
+      created_at:
+        description: Creation timestamp
+        example: "2025-01-15T10:30:00Z"
+        type: string
+      email:
+        description: Client email
+        example: john.doe@example.com
+        type: string
+      id:
+        description: Client UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        description: Client name
+        example: John Doe
+        type: string
+    type: object
+  model.DailyUsage:
+    description: Daily API usage statistics for a client
+    properties:
+      client_id:
+        description: Client UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      client_name:
+        description: Client name
+        example: John Doe
+        type: string
+      count:
+        description: Number of API requests
+        example: 150
+        type: integer
+      date:
+        description: Date (YYYY-MM-DD)
+        example: "2025-01-15"
+        type: string
+    type: object
+  model.LogRequest:
+    description: Request body for recording an API hit
+    properties:
+      api_key:
+        description: Client's API key
+        example: sk_live_abcdef123456
+        type: string
+      endpoint:
+        description: API endpoint that was called
+        example: /api/v1/users
+        type: string
+      ip:
+        description: Client's IP address
+        example: 192.168.1.100
+        type: string
+    required:
+    - api_key
+    - endpoint
+    - ip
+    type: object
+  model.LoginRequest:
+    description: Request body for client authentication
+    properties:
+      api_key:
+        description: API key for authentication
+        example: sk_live_abcdef123456
+        type: string
+    required:
+    - api_key
+    type: object
+  model.RegisterRequest:
+    description: Request body for registering a new client
+    properties:
+      email:
+        description: Valid email address
+        example: john.doe@example.com
+        type: string
+      name:
+        description: Client name (3-100 characters)
+        example: John Doe
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  model.TopClient:
+    description: Client with highest API usage
+    properties:
+      client_id:
+        description: Client UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      client_name:
+        description: Client name
+        example: John Doe
+        type: string
+      email:
+        description: Client email
+        example: john.doe@example.com
+        type: string
+      total_requests:
+        description: Total API requests
+        example: 500
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@nexmedis.com
+    name: API Support
+    url: http://www.nexmedis.com/support
+  description: A high-performance API for tracking user activity with advanced caching,
+    rate limiting, and JWT authentication. Built with Go, Echo, PostgreSQL, and Redis.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: User Activity Tracking System API
+  version: "1.0"
+paths:
+  /api/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout and invalidate the current session (token blacklisting would
+        be implemented here)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            properties:
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - Authentication
+  /api/auth/profile:
+    get:
+      description: Get the profile information of the authenticated client
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/model.ClientResponse'
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Client not found in context
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "404":
+          description: Client not found
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get client profile
+      tags:
+      - Authentication
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh an existing JWT token to extend the session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refreshed successfully
+          schema:
+            properties:
+              data:
+                properties:
+                  expires_in:
+                    type: string
+                  token:
+                    type: string
+                type: object
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Invalid or expired token
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Refresh JWT token
+      tags:
+      - Authentication
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate using API key and receive a JWT token for accessing
+        protected endpoints
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            properties:
+              data:
+                properties:
+                  client_id:
+                    type: string
+                  expires_in:
+                    type: string
+                  token:
+                    type: string
+                type: object
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "400":
+          description: Invalid request body or API key format
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Invalid API key
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to generate token
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: Login to get JWT token
+      tags:
+      - Authentication
+  /api/logs:
+    post:
+      consumes:
+      - application/json
+      description: Record an API activity/hit with client identification, IP address,
+        and endpoint information. This endpoint is rate-limited per client.
+      parameters:
+      - description: API log details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LogRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: API hit recorded successfully
+          schema:
+            properties:
+              data:
+                properties:
+                  log_id:
+                    type: string
+                  remaining_requests:
+                    type: integer
+                  timestamp:
+                    type: string
+                type: object
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Invalid API key
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "429":
+          description: Rate limit exceeded
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to record log
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: Record an API hit
+      tags:
+      - Logs
+  /api/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new client and receive an API key for authentication
+      parameters:
+      - description: Client registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Client registered successfully
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/model.ClientResponse'
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "409":
+          description: Email already registered
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to create client
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: Register a new client
+      tags:
+      - Clients
+  /api/usage/client/{client_id}:
+    get:
+      description: Retrieve daily API usage statistics for a specific client for the
+        last 7 days
+      parameters:
+      - description: Client ID
+        in: path
+        name: client_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Client usage retrieved successfully
+          schema:
+            properties:
+              data:
+                items:
+                  $ref: '#/definitions/model.DailyUsage'
+                type: array
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "400":
+          description: Client ID is required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Unauthorized - JWT token required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "404":
+          description: Client not found
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to get client usage
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get client usage statistics
+      tags:
+      - Usage
+  /api/usage/daily:
+    get:
+      description: Retrieve daily API usage statistics aggregated by client for the
+        last 7 days. Results are cached for 1 hour.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daily usage retrieved successfully
+          schema:
+            properties:
+              data:
+                items:
+                  $ref: '#/definitions/model.DailyUsage'
+                type: array
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Unauthorized - JWT token required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to get daily usage
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get daily usage statistics
+      tags:
+      - Usage
+  /api/usage/stats:
+    get:
+      description: Retrieve overall API usage statistics including total requests
+        in the last 24 hours, 7 days, and total number of clients
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage stats retrieved successfully
+          schema:
+            properties:
+              data:
+                properties:
+                  timestamp:
+                    type: string
+                  total_clients:
+                    type: integer
+                  total_requests_7d:
+                    type: integer
+                  total_requests_24h:
+                    type: integer
+                type: object
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Unauthorized - JWT token required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to get usage stats
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get overall usage statistics
+      tags:
+      - Usage
+  /api/usage/top:
+    get:
+      description: Retrieve the top 3 clients with the highest number of API requests
+        in the last 24 hours. Implements cache prefetching to ensure fresh data.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Top clients retrieved successfully
+          schema:
+            properties:
+              data:
+                items:
+                  $ref: '#/definitions/model.TopClient'
+                type: array
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "401":
+          description: Unauthorized - JWT token required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        "500":
+          description: Failed to get top clients
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get top clients
+      tags:
+      - Usage
+securityDefinitions:
+  ApiKeyAuth:
+    description: API Key for client authentication
+    in: header
+    name: X-API-Key
+    type: apiKey
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

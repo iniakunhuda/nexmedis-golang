@@ -29,6 +29,19 @@ func NewLogHandler(logStore *store.LogStore, clientStore *store.ClientStore, rat
 }
 
 // RecordLog handles recording an API hit
+//
+//	@Summary		Record an API hit
+//	@Description	Record an API activity/hit with client identification, IP address, and endpoint information. This endpoint is rate-limited per client.
+//	@Tags			Logs
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.LogRequest	true	"API log details"
+//	@Success		201		{object}	object{success=bool,message=string,data=object{log_id=string,timestamp=string,remaining_requests=int}}	"API hit recorded successfully"
+//	@Failure		400		{object}	object{success=bool,message=string,error=string}	"Invalid request body or validation error"
+//	@Failure		401		{object}	object{success=bool,message=string,error=string}	"Invalid API key"
+//	@Failure		429		{object}	object{success=bool,message=string,error=string}	"Rate limit exceeded"
+//	@Failure		500		{object}	object{success=bool,message=string,error=string}	"Failed to record log"
+//	@Router			/api/logs [post]
 func (h *LogHandler) RecordLog(c echo.Context) error {
 	var req model.LogRequest
 	if err := c.Bind(&req); err != nil {

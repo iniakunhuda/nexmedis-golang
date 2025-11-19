@@ -68,6 +68,11 @@ func Setup(e *echo.Echo, config Config) {
 	protected := api.Group("")
 	protected.Use(JWTMiddleware())
 
+	// Auth routes
+	protected.POST("/auth/refresh", authHandler.RefreshToken)
+	protected.POST("/auth/logout", authHandler.Logout)
+	protected.GET("/auth/profile", authHandler.GetProfile)
+
 	// Usage routes (JWT required)
 	usage := protected.Group("/usage")
 

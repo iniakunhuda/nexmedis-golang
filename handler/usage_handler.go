@@ -28,6 +28,16 @@ func NewUsageHandler(logStore *store.LogStore, clientStore *store.ClientStore, c
 }
 
 // GetDailyUsage returns daily usage statistics for the last 7 days
+//
+//	@Summary		Get daily usage statistics
+//	@Description	Retrieve daily API usage statistics aggregated by client for the last 7 days. Results are cached for 1 hour.
+//	@Tags			Usage
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{success=bool,message=string,data=[]model.DailyUsage}	"Daily usage retrieved successfully"
+//	@Failure		401	{object}	object{success=bool,message=string,error=string}	"Unauthorized - JWT token required"
+//	@Failure		500	{object}	object{success=bool,message=string,error=string}	"Failed to get daily usage"
+//	@Router			/api/usage/daily [get]
 func (h *UsageHandler) GetDailyUsage(c echo.Context) error {
 	ctx := c.Request().Context()
 	cacheKey := "usage:daily:7days"
@@ -55,6 +65,16 @@ func (h *UsageHandler) GetDailyUsage(c echo.Context) error {
 }
 
 // GetTopClients returns top 3 clients with the highest requests in the last 24 hours
+//
+//	@Summary		Get top clients
+//	@Description	Retrieve the top 3 clients with the highest number of API requests in the last 24 hours. Implements cache prefetching to ensure fresh data.
+//	@Tags			Usage
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{success=bool,message=string,data=[]model.TopClient}	"Top clients retrieved successfully"
+//	@Failure		401	{object}	object{success=bool,message=string,error=string}	"Unauthorized - JWT token required"
+//	@Failure		500	{object}	object{success=bool,message=string,error=string}	"Failed to get top clients"
+//	@Router			/api/usage/top [get]
 func (h *UsageHandler) GetTopClients(c echo.Context) error {
 	ctx := c.Request().Context()
 	cacheKey := "usage:top:24h"
@@ -106,6 +126,19 @@ func (h *UsageHandler) prefetchTopClients(ctx context.Context, cacheKey string) 
 }
 
 // GetClientUsage returns usage statistics for a specific client
+//
+//	@Summary		Get client usage statistics
+//	@Description	Retrieve daily API usage statistics for a specific client for the last 7 days
+//	@Tags			Usage
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			client_id	path		string	true	"Client ID"
+//	@Success		200			{object}	object{success=bool,message=string,data=[]model.DailyUsage}	"Client usage retrieved successfully"
+//	@Failure		400			{object}	object{success=bool,message=string,error=string}	"Client ID is required"
+//	@Failure		401			{object}	object{success=bool,message=string,error=string}	"Unauthorized - JWT token required"
+//	@Failure		404			{object}	object{success=bool,message=string,error=string}	"Client not found"
+//	@Failure		500			{object}	object{success=bool,message=string,error=string}	"Failed to get client usage"
+//	@Router			/api/usage/client/{client_id} [get]
 func (h *UsageHandler) GetClientUsage(c echo.Context) error {
 	clientIDStr := c.Param("client_id")
 	if clientIDStr == "" {
@@ -144,6 +177,16 @@ func (h *UsageHandler) GetClientUsage(c echo.Context) error {
 }
 
 // GetUsageStats returns overall usage statistics
+//
+//	@Summary		Get overall usage statistics
+//	@Description	Retrieve overall API usage statistics including total requests in the last 24 hours, 7 days, and total number of clients
+//	@Tags			Usage
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{success=bool,message=string,data=object{total_requests_24h=int,total_requests_7d=int,total_clients=int,timestamp=string}}	"Usage stats retrieved successfully"
+//	@Failure		401	{object}	object{success=bool,message=string,error=string}	"Unauthorized - JWT token required"
+//	@Failure		500	{object}	object{success=bool,message=string,error=string}	"Failed to get usage stats"
+//	@Router			/api/usage/stats [get]
 func (h *UsageHandler) GetUsageStats(c echo.Context) error {
 	ctx := c.Request().Context()
 	cacheKey := "usage:stats:overall"

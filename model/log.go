@@ -35,17 +35,19 @@ func (APILog) TableName() string {
 }
 
 // DailyUsage represents daily usage statistics for a client
+// @Description Daily API usage statistics for a client
 type DailyUsage struct {
-	ClientID  uuid.UUID `json:"client_id"`
-	ClientName string   `json:"client_name"`
-	Date      string    `json:"date"`
-	Count     int64     `json:"count"`
+	ClientID   uuid.UUID `json:"client_id" example:"550e8400-e29b-41d4-a716-446655440000"` // Client UUID
+	ClientName string    `json:"client_name" example:"John Doe"`                           // Client name
+	Date       string    `json:"date" example:"2025-01-15"`                                // Date (YYYY-MM-DD)
+	Count      int64     `json:"count" example:"150"`                                      // Number of API requests
 }
 
 // TopClient represents top clients by request count
+// @Description Client with highest API usage
 type TopClient struct {
-	ClientID   uuid.UUID `json:"client_id"`
-	ClientName string    `json:"client_name"`
-	Email      string    `json:"email"`
-	TotalRequests int64  `json:"total_requests"`
+	ClientID      uuid.UUID `json:"client_id" example:"550e8400-e29b-41d4-a716-446655440000"` // Client UUID
+	ClientName    string    `json:"client_name" example:"John Doe"`                           // Client name
+	Email         string    `json:"email" example:"john.doe@example.com"`                     // Client email
+	TotalRequests int64     `json:"total_requests" example:"500"`                             // Total API requests
 }

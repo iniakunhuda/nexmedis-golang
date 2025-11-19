@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"nexmedis-golang/db"
+	_ "nexmedis-golang/docs" // Import docs for Swagger
 	"nexmedis-golang/router"
 	"nexmedis-golang/utils"
 	"os"
@@ -13,8 +14,35 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
+//	@title						User Activity Tracking System API
+//	@version					1.0
+//	@description				A high-performance API for tracking user activity with advanced caching, rate limiting, and JWT authentication. Built with Go, Echo, PostgreSQL, and Redis.
+//	@termsOfService				http://swagger.io/terms/
+//
+//	@contact.name				API Support
+//	@contact.url				http://www.nexmedis.com/support
+//	@contact.email				support@nexmedis.com
+//
+//	@license.name				MIT
+//	@license.url				https://opensource.org/licenses/MIT
+//
+//	@host						localhost:8080
+//	@BasePath					/
+//
+//	@securityDefinitions.apikey	ApiKeyAuth
+//	@in							header
+//	@name						X-API-Key
+//	@description				API Key for client authentication
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Type "Bearer" followed by a space and JWT token
+//
+//	@schemes					http https
 func main() {
 	// Initialize JWT
 	utils.InitJWT()
@@ -44,6 +72,9 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 
+	// Swagger documentation route
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
+
 	// Get configuration
 	cacheTTL := getCacheTTL()
 	rateLimitPerHour := getRateLimit()
@@ -69,6 +100,7 @@ func main() {
 	// Start server with graceful shutdown
 	go func() {
 		log.Printf("Starting server on %s", serverAddr)
+		log.Printf("Swagger documentation available at http://%s/swagger/index.html", serverAddr)
 		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

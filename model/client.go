@@ -36,13 +36,14 @@ func (Client) TableName() string {
 }
 
 // ClientResponse is used for API responses (excludes sensitive data)
+// @Description Client information response
 type ClientResponse struct {
-	ID        uuid.UUID `json:"id"`
-	ClientID  string    `json:"client_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	APIKey    string    `json:"api_key,omitempty"` // Only shown on registration
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"` // Client UUID
+	ClientID  string    `json:"client_id" example:"client_abc12345"`               // Human-readable client ID
+	Name      string    `json:"name" example:"John Doe"`                           // Client name
+	Email     string    `json:"email" example:"john.doe@example.com"`              // Client email
+	APIKey    string    `json:"api_key,omitempty" example:"sk_live_abcdef123456"`  // API key (only shown on registration)
+	CreatedAt time.Time `json:"created_at" example:"2025-01-15T10:30:00Z"`         // Creation timestamp
 }
 
 // ToResponse converts Client to ClientResponse

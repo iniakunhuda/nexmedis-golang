@@ -21,6 +21,18 @@ func NewClientHandler(clientStore *store.ClientStore) *ClientHandler {
 }
 
 // Register handles client registration
+//
+//	@Summary		Register a new client
+//	@Description	Register a new client and receive an API key for authentication
+//	@Tags			Clients
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.RegisterRequest	true	"Client registration details"
+//	@Success		201		{object}	object{success=bool,message=string,data=model.ClientResponse}	"Client registered successfully"
+//	@Failure		400		{object}	object{success=bool,message=string,error=string}	"Invalid request body or validation error"
+//	@Failure		409		{object}	object{success=bool,message=string,error=string}	"Email already registered"
+//	@Failure		500		{object}	object{success=bool,message=string,error=string}	"Failed to create client"
+//	@Router			/api/register [post]
 func (h *ClientHandler) Register(c echo.Context) error {
 	var req model.RegisterRequest
 	if err := c.Bind(&req); err != nil {

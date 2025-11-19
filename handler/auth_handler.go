@@ -5,6 +5,7 @@ import (
 	"nexmedis-golang/store"
 	"nexmedis-golang/utils"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -21,6 +22,18 @@ func NewAuthHandler(clientStore *store.ClientStore) *AuthHandler {
 }
 
 // Login handles client authentication and returns a JWT token
+//
+//	@Summary		Login to get JWT token
+//	@Description	Authenticate using API key and receive a JWT token for accessing protected endpoints
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.LoginRequest	true	"Login credentials"
+//	@Success		200		{object}	object{success=bool,message=string,data=object{token=string,client_id=string,expires_in=string}}	"Login successful"
+//	@Failure		400		{object}	object{success=bool,message=string,error=string}	"Invalid request body or API key format"
+//	@Failure		401		{object}	object{success=bool,message=string,error=string}	"Invalid API key"
+//	@Failure		500		{object}	object{success=bool,message=string,error=string}	"Failed to generate token"
+//	@Router			/api/login [post]
 func (h *AuthHandler) Login(c echo.Context) error {
 	var req model.LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -54,6 +67,16 @@ func (h *AuthHandler) Login(c echo.Context) error {
 }
 
 // RefreshToken handles JWT token refresh
+//
+//	@Summary		Refresh JWT token
+//	@Description	Refresh an existing JWT token to extend the session
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{success=bool,message=string,data=object{token=string,expires_in=string}}	"Token refreshed successfully"
+//	@Failure		401	{object}	object{success=bool,message=string,error=string}	"Invalid or expired token"
+//	@Router			/api/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	// Get current token from Authorization header
 	authHeader := c.Request().Header.Get("Authorization")
@@ -84,6 +107,15 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 }
 
 // Logout handles client logout (token invalidation would go here)
+//
+//	@Summary		Logout
+//	@Description	Logout and invalidate the current session (token blacklisting would be implemented here)
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{success=bool,message=string}	"Logout successful"
+//	@Router			/api/auth/logout [post]
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// In a production system, you would invalidate the token here
 	// This could involve adding it to a blacklist in Redis
@@ -91,6 +123,15 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 }
 
 // GetProfile returns the authenticated client's profile
+//
+//	@Summary		Get client profile
+//	@Description	Get the profile information of the authenticated client
+//	@Tags			Authentication
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{success=bool,message=string,data=model.ClientResponse}	"Profile retrieved successfully"
+//	@Failure		401	{object}	object{success=bool,message=string,error=string}	"Client not found in context"
+//	@Failure		404	{object}	object{success=bool,message=string,error=string}	"Client not found"
 func (h *AuthHandler) GetProfile(c echo.Context) error {
 	// Get client from context (set by auth middleware)
 	clientID, ok := c.Get("client_id").(string)
@@ -98,8 +139,14 @@ func (h *AuthHandler) GetProfile(c echo.Context) error {
 		return utils.UnauthorizedResponse(c, "Client not found in context")
 	}
 
+	// Parse client ID to uuid.UUID
+	parsedID, err := uuid.Parse(clientID)
+	if err != nil {
+		return utils.UnauthorizedResponse(c, "Invalid client ID")
+	}
+
 	// Find client
-	client, err := h.clientStore.FindByClientID(clientID)
+	client, err := h.clientStore.FindByID(parsedID)
 	if err != nil {
 		return utils.NotFoundResponse(c, "Client not found")
 	}
