@@ -17,6 +17,7 @@ A high-performance, scalable backend system for tracking API usage with advanced
 - **Rate Limiting** - Per-client hourly rate limits (default: 1000 req/hour)
 - **Database Optimization** - Indexed queries, batch operations
 - **Graceful Degradation** - Fallback when Redis is unavailable
+- **Docker Support** - Containerized for easy deployment
 
 ## 📋 Prerequisites
 
@@ -45,7 +46,12 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. **Run locally**
+4. **Run with Docker Compose (Recommended)**
+```bash
+docker-compose up -d
+```
+
+5. **Or run locally**
 ```bash
 # Start PostgreSQL and Redis first
 go run main.go
@@ -176,21 +182,6 @@ GET /api/usage/stats
 GET /api/usage/client/:client_id
 ```
 
-#### Get Profile
-```http
-GET /api/profile
-```
-
-#### Refresh Token
-```http
-POST /api/refresh
-```
-
-#### Logout
-```http
-POST /api/logout
-```
-
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -255,6 +246,8 @@ nexmedis-golang/
 │   ├── response.go
 │   └── validator.go
 ├── main.go             # Entry point
+├── Dockerfile
+├── docker-compose.yml
 └── README.md
 ```
 
@@ -265,6 +258,7 @@ nexmedis-golang/
 - **Database**: PostgreSQL (Primary data store)
 - **Cache**: Redis (Caching & Pub/Sub)
 - **Authentication**: JWT (golang-jwt/jwt/v5)
+- **Containerization**: Docker & Docker Compose
 
 ## 🔐 Security Features
 
