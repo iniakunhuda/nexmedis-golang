@@ -14,33 +14,22 @@ import (
 // Config holds router configuration
 type Config struct {
 	DB                *gorm.DB
+	RateLimiter       *utils.RateLimiter
 	CacheTTL          time.Duration
 	EnableIPWhitelist bool
 	AllowedIPs        []string
-}
-
-func ErrorHandler(err error, c echo.Context) {
-	code := 500
-	message := "Internal server error"
-
-	if he, ok := err.(*echo.HTTPError); ok {
-		code = he.Code
-		message = he.Message.(string)
-	}
-
-	// Don't send error response if response already started
-	if !c.Response().Committed {
-		_ = utils.ErrorResponseWithMessage(c, code, message, "")
-	}
 }
 
 // Setup configures all routes and middleware
 func Setup(e *echo.Echo, config Config) {
 	// Initialize stores
 	clientStore := store.NewClientStore(config.DB)
+	logStore := store.NewLogStore(config.DB)
 
 	// Initialize handlers
 	clientHandler := handler.NewClientHandler(clientStore)
+	authHandler := handler.NewAuthHandler(clientStore)
+	logHandler := handler.NewLogHandler(logStore, clientStore, config.RateLimiter)
 
 	// Global middleware
 	e.Use(middleware.Logger())
@@ -50,6 +39,11 @@ func Setup(e *echo.Echo, config Config) {
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-API-Key"},
 	}))
+
+	// Rate limiting middleware
+	if config.RateLimiter != nil {
+		e.Use(RateLimitHeaders(config.RateLimiter))
+	}
 
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
@@ -64,14 +58,10 @@ func Setup(e *echo.Echo, config Config) {
 
 	// Public routes (no authentication required)
 	api.POST("/register", clientHandler.Register)
-	api.POST("/login", func(c echo.Context) error {
-		return c.String(200, "OK")
-	})
+	api.POST("/login", authHandler.Login)
 
 	// API log routes (API key required)
-	api.POST("/logs", func(c echo.Context) error {
-		return c.String(200, "OK")
-	})
+	api.POST("/logs", logHandler.RecordLog)
 	api.GET("/usage/daily", func(c echo.Context) error {
 		return c.String(200, "OK")
 	})

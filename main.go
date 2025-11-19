@@ -46,10 +46,15 @@ func main() {
 
 	// Get configuration
 	cacheTTL := getCacheTTL()
+	rateLimitPerHour := getRateLimit()
+
+	// Initialize rate limiter
+	rateLimiter := utils.NewRateLimiter(rateLimitPerHour)
 
 	// Setup routes
 	routerConfig := router.Config{
 		DB:                db.DB,
+		RateLimiter:       rateLimiter,
 		CacheTTL:          cacheTTL,
 		EnableIPWhitelist: false, // Set to true and configure AllowedIPs for IP whitelisting
 		AllowedIPs:        []string{},

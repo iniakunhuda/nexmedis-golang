@@ -34,7 +34,7 @@ func GenerateJWT(clientID uuid.UUID, email string) (string, error) {
 	}
 
 	expirationTime := time.Now().Add(24 * time.Hour)
-	
+
 	// Get custom expiration from env if set
 	if expStr := os.Getenv("JWT_EXPIRATION"); expStr != "" {
 		if exp, err := time.ParseDuration(expStr); err == nil {
@@ -88,4 +88,18 @@ func RefreshJWT(tokenString string) (string, error) {
 	}
 
 	return GenerateJWT(claims.ClientID, claims.Email)
+}
+
+// GetTokenExpiration retrieves the expiration time of a JWT token
+func GetTokenExpiration(tokenString string) (time.Time, error) {
+	claims := &JWTClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return time.Time{}, err
+	}
+
+	return time.Unix(claims.ExpiresAt.Unix(), 0), nil
 }
