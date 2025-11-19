@@ -71,6 +71,10 @@ func Setup(e *echo.Echo, config Config) {
 	// Usage routes (JWT required)
 	usage := protected.Group("/usage")
 
+	if config.EnableIPWhitelist && len(config.AllowedIPs) > 0 {
+		usage.Use(IPWhitelistMiddleware(config.AllowedIPs))
+	}
+
 	usage.GET("/daily", usageHandler.GetDailyUsage)
 	usage.GET("/top", usageHandler.GetTopClients)
 	usage.GET("/stats", usageHandler.GetUsageStats)

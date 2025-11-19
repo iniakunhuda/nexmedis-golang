@@ -59,6 +59,32 @@ func RateLimitHeaders(limiter *utils.RateLimiter) echo.MiddlewareFunc {
 	}
 }
 
+// IPWhitelistMiddleware restricts access to specific IPs
+func IPWhitelistMiddleware(allowedIPs []string) echo.MiddlewareFunc {
+	ipMap := make(map[string]bool)
+	for _, ip := range allowedIPs {
+		ipMap[ip] = true
+	}
+
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			clientIP := c.RealIP()
+
+			// If whitelist is empty, allow all
+			if len(ipMap) == 0 {
+				return next(c)
+			}
+
+			// Check if IP is whitelisted
+			if !ipMap[clientIP] {
+				return utils.ForbiddenResponse(c, "IP address not whitelisted")
+			}
+
+			return next(c)
+		}
+	}
+}
+
 func ErrorHandler(err error, c echo.Context) {
 	code := 500
 	message := "Internal server error"
