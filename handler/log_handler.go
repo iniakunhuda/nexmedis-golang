@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 )
 
 // LogHandler handles API log-related requests
@@ -94,15 +95,22 @@ func (h *LogHandler) RecordLog(c echo.Context) error {
 
 // invalidateUsageCache invalidates usage-related cache entries
 func (h *LogHandler) invalidateUsageCache(ctx context.Context, clientID interface{}) {
-	if !db.IsRedisAvailable(ctx) {
+	bgCtx := context.Background()
+
+	if !db.IsRedisAvailable(bgCtx) {
+		log.Warn("Redis not available for cache invalidation")
 		return
 	}
 
-	// Invalidate daily usage cache
-	_ = db.CacheInvalidatePattern(ctx, "usage:daily:*")
+	if err := db.CacheInvalidatePattern(bgCtx, "usage:daily:*"); err != nil {
+		log.Printf("Failed to invalidate daily usage cache: %v", err)
+	}
 
-	// Invalidate top clients cache
-	_ = db.CacheDelete(ctx, "usage:top:24h")
+	if err := db.CacheDelete(bgCtx, "usage:top:24h"); err != nil {
+		log.Printf("Failed to invalidate top clients cache: %v", err)
+	}
+
+	log.Printf("Cache invalidated for client: %v", clientID)
 }
 
 // publishLogUpdate publishes a log update to Redis Pub/Sub

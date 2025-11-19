@@ -30,6 +30,7 @@ func Setup(e *echo.Echo, config Config) {
 	clientHandler := handler.NewClientHandler(clientStore)
 	authHandler := handler.NewAuthHandler(clientStore)
 	logHandler := handler.NewLogHandler(logStore, clientStore, config.RateLimiter)
+	usageHandler := handler.NewUsageHandler(logStore, clientStore, config.CacheTTL)
 
 	// Global middleware
 	e.Use(middleware.Logger())
@@ -62,12 +63,18 @@ func Setup(e *echo.Echo, config Config) {
 
 	// API log routes (API key required)
 	api.POST("/logs", logHandler.RecordLog)
-	api.GET("/usage/daily", func(c echo.Context) error {
-		return c.String(200, "OK")
-	})
-	api.GET("/usage/top", func(c echo.Context) error {
-		return c.String(200, "OK")
-	})
+
+	// Protected routes (JWT required)
+	protected := api.Group("")
+	protected.Use(JWTMiddleware())
+
+	// Usage routes (JWT required)
+	usage := protected.Group("/usage")
+
+	usage.GET("/daily", usageHandler.GetDailyUsage)
+	usage.GET("/top", usageHandler.GetTopClients)
+	usage.GET("/stats", usageHandler.GetUsageStats)
+	usage.GET("/client/:client_id", usageHandler.GetClientUsage)
 
 	// Custom error handler
 	e.HTTPErrorHandler = ErrorHandler
