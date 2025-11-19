@@ -1,6 +1,8 @@
 package router
 
 import (
+	"nexmedis-golang/handler"
+	"nexmedis-golang/store"
 	"nexmedis-golang/utils"
 	"time"
 
@@ -34,6 +36,11 @@ func ErrorHandler(err error, c echo.Context) {
 
 // Setup configures all routes and middleware
 func Setup(e *echo.Echo, config Config) {
+	// Initialize stores
+	clientStore := store.NewClientStore(config.DB)
+
+	// Initialize handlers
+	clientHandler := handler.NewClientHandler(clientStore)
 
 	// Global middleware
 	e.Use(middleware.Logger())
@@ -56,9 +63,7 @@ func Setup(e *echo.Echo, config Config) {
 	api := e.Group("/api")
 
 	// Public routes (no authentication required)
-	api.POST("/register", func(c echo.Context) error {
-		return c.String(200, "OK")
-	})
+	api.POST("/register", clientHandler.Register)
 	api.POST("/login", func(c echo.Context) error {
 		return c.String(200, "OK")
 	})
