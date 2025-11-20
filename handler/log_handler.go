@@ -127,16 +127,21 @@ func (h *LogHandler) invalidateUsageCache(ctx context.Context, clientID interfac
 }
 
 // publishLogUpdate publishes a log update to Redis Pub/Sub
-func (h *LogHandler) publishLogUpdate(ctx context.Context, log *model.APILog) {
-	if !db.IsRedisAvailable(ctx) {
+func (h *LogHandler) publishLogUpdate(ctx context.Context, apiLog *model.APILog) {
+	// Use background context instead of request context
+	bgCtx := context.Background()
+
+	if !db.IsRedisAvailable(bgCtx) {
 		return
 	}
 
 	message := map[string]interface{}{
-		"client_id": log.ClientID,
-		"endpoint":  log.Endpoint,
-		"timestamp": log.Timestamp,
+		"client_id": apiLog.ClientID,
+		"endpoint":  apiLog.Endpoint,
+		"timestamp": apiLog.Timestamp,
 	}
 
-	_ = db.PublishMessage(ctx, "api_logs:updates", message)
+	if err := db.PublishMessage(bgCtx, "api_logs:updates", message); err != nil {
+		log.Printf("Failed to publish log update: %v", err)
+	}
 }

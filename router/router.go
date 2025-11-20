@@ -31,6 +31,7 @@ func Setup(e *echo.Echo, config Config) {
 	authHandler := handler.NewAuthHandler(clientStore)
 	logHandler := handler.NewLogHandler(logStore, clientStore, config.RateLimiter)
 	usageHandler := handler.NewUsageHandler(logStore, clientStore, config.CacheTTL)
+	sseHandler := handler.NewSSEHandler()
 
 	// Global middleware
 	e.Use(middleware.Logger())
@@ -84,6 +85,11 @@ func Setup(e *echo.Echo, config Config) {
 	usage.GET("/top", usageHandler.GetTopClients)
 	usage.GET("/stats", usageHandler.GetUsageStats)
 	usage.GET("/client/:client_id", usageHandler.GetClientUsage)
+
+	// Real-time SSE routes (JWT required)
+	stream := protected.Group("/stream")
+	stream.GET("/usage", sseHandler.StreamUsageUpdates)
+	stream.GET("/top", sseHandler.StreamTopClients)
 
 	// Custom error handler
 	e.HTTPErrorHandler = ErrorHandler

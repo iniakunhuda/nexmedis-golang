@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Usage Updates - SSE Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .auth-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status.connected {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status.disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .streams-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stream-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .stream-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .stream-header h3 {
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f7fafc;
+            border-radius: 5px;
+            padding: 15px;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-entry.heartbeat {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .log-entry.update {
+            border-left-color: #ed8936;
+        }
+
+        .log-time {
+            font-size: 0.85em;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .log-type {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .log-data {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #2d3748;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔴 Real-Time Usage Updates</h1>
+            <p>Server-Sent Events (SSE) Demo for User Activity Tracking System</p>
+        </div>
+
+        <div class="auth-section">
+            <h3>Authentication</h3>
+            <div class="form-group">
+                <label for="jwtToken">JWT Token:</label>
+                <input type="text" id="jwtToken" placeholder="Enter your JWT token (get it from /api/login)">
+            </div>
+            <div class="form-group">
+                <label for="apiUrl">API Base URL:</label>
+                <input type="text" id="apiUrl" value="http://localhost:8080" placeholder="http://localhost:8080">
+            </div>
+        </div>
+
+        <div class="streams-container">
+            <!-- Usage Stream -->
+            <div class="stream-box">
+                <div class="stream-header">
+                    <h3>📊 Usage Updates</h3>
+                    <div>
+                        <span id="usageStatus" class="status disconnected">Disconnected</span>
+                        <button class="btn btn-success" onclick="connectUsageStream()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectUsageStream()">Disconnect</button>
+                    </div>
+                </div>
+                <div id="usageLogs" class="log-container">
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <p>Click "Connect" to start receiving real-time usage updates</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Clients Stream -->
+            <div class="stream-box">
+                <div class="stream-header">
+                    <h3>🏆 Top Clients</h3>
+                    <div>
+                        <span id="topStatus" class="status disconnected">Disconnected</span>
+                        <button class="btn btn-success" onclick="connectTopStream()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectTopStream()">Disconnect</button>
+                    </div>
+                </div>
+                <div id="topLogs" class="log-container">
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                        </svg>
+                        <p>Click "Connect" to start receiving top clients updates</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let usageEventSource = null;
+        let topEventSource = null;
+        let statsEventSource = null;
+
+        function getJWTToken() {
+            const token = document.getElementById('jwtToken').value.trim();
+            if (!token) {
+                alert('Please enter a JWT token first!');
+                return null;
+            }
+            return token;
+        }
+
+        function getAPIUrl() {
+            return document.getElementById('apiUrl').value.trim() || 'http://localhost:8080';
+        }
+
+        function addLog(containerId, type, data, isHeartbeat = false) {
+            const container = document.getElementById(containerId);
+            
+            // Remove empty state if exists
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${isHeartbeat ? 'heartbeat' : ''}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const dataStr = JSON.stringify(data, null, 2);
+            
+            logEntry.innerHTML = `
+                <div class="log-time">${timestamp}</div>
+                <span class="log-type">${type}</span>
+                <div class="log-data">${dataStr}</div>
+            `;
+            
+            container.insertBefore(logEntry, container.firstChild);
+            
+            // Keep only last 50 entries
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function updateStatus(elementId, connected) {
+            const statusElement = document.getElementById(elementId);
+            statusElement.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            statusElement.textContent = connected ? 'Connected' : 'Disconnected';
+        }
+
+        function connectUsageStream() {
+            const token = getJWTToken();
+            if (!token) return;
+
+            disconnectUsageStream();
+
+            const url = `${getAPIUrl()}/api/stream/usage?access_token=${encodeURIComponent(token)}`;
+            usageEventSource = new EventSource(url);
+
+            usageEventSource.addEventListener('connected', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('usageLogs', 'connected', data);
+                updateStatus('usageStatus', true);
+            });
+
+            usageEventSource.addEventListener('update', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('usageLogs', 'update', data);
+            });
+
+            usageEventSource.addEventListener('heartbeat', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('usageLogs', 'heartbeat', data, true);
+            });
+
+            usageEventSource.onerror = (error) => {
+                console.error('Usage stream error:', error);
+                updateStatus('usageStatus', false);
+                disconnectUsageStream();
+            };
+        }
+
+        function disconnectUsageStream() {
+            if (usageEventSource) {
+                usageEventSource.close();
+                usageEventSource = null;
+                updateStatus('usageStatus', false);
+            }
+        }
+
+        function connectTopStream() {
+            const token = getJWTToken();
+            if (!token) return;
+
+            disconnectTopStream();
+
+            const url = `${getAPIUrl()}/api/stream/top?access_token=${encodeURIComponent(token)}`;
+            topEventSource = new EventSource(url);
+
+            topEventSource.addEventListener('connected', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('topLogs', 'connected', data);
+                updateStatus('topStatus', true);
+            });
+
+            topEventSource.addEventListener('top_clients', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('topLogs', 'top_clients', data);
+            });
+
+            topEventSource.addEventListener('refreshing', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('topLogs', 'refreshing', data);
+            });
+
+            topEventSource.addEventListener('heartbeat', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('topLogs', 'heartbeat', data, true);
+            });
+
+            topEventSource.onerror = (error) => {
+                console.error('Top clients stream error:', error);
+                updateStatus('topStatus', false);
+                disconnectTopStream();
+            };
+        }
+
+        function disconnectTopStream() {
+            if (topEventSource) {
+                topEventSource.close();
+                topEventSource = null;
+                updateStatus('topStatus', false);
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            disconnectUsageStream();
+            disconnectTopStream();
+        });
+    </script>
+</body>
+</html>

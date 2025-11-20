@@ -83,3 +83,11 @@ func CreatedResponse(c echo.Context, message string, data interface{}) error {
 func OKResponse(c echo.Context, message string, data interface{}) error {
 	return SuccessResponse(c, http.StatusOK, message, data)
 }
+
+func ServiceUnavailableResponse(c echo.Context, message string) error {
+	return c.JSON(http.StatusServiceUnavailable, map[string]interface{}{
+		"success": false,
+		"message": message,
+		"error":   "Service temporarily unavailable",
+	})
+}

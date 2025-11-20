@@ -13,6 +13,10 @@ func JWTMiddleware() echo.MiddlewareFunc {
 			// Get Authorization header
 			authHeader := c.Request().Header.Get("Authorization")
 			if authHeader == "" {
+				authHeader = c.QueryParam("access_token")
+			}
+
+			if authHeader == "" {
 				return utils.UnauthorizedResponse(c, "Authorization header required")
 			}
 
